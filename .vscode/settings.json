@@ -1,0 +1,14 @@
+{
+    "files.associations": {
+        "gb.h": "c",
+        "game_definitions.h": "c",
+        "game_functions.h": "c",
+        "game_map.h": "c",
+        "game_character.h": "c",
+        "rand.h": "c",
+        "string.h": "c",
+        "stdio.h": "c",
+        "math.h": "c",
+        "corecrt_math.h": "c"
+    }
+}
