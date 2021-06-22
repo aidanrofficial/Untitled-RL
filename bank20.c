@@ -1,7 +1,9 @@
 #include <gb/gb.h>
+
 #include "Game_Definitions.h"
 #include "Game_Functions.h"
 #include "Game_Map.h"
+
 #include "Maps/Map_Dungeon_1.c"
 #include "Maps/Map_Dungeon_T.c"
 #include "Maps/Map_Dungeon_B.c"
@@ -18,11 +20,24 @@
 #include "Maps/Map_Dungeon_BL.c"
 #include "Maps/Map_Dungeon_BR.c"
 
+#include "Maps/Map_Dungeon_Boss_T.c"
+#include "Maps/Map_Dungeon_Boss_B.c"
+#include "Maps/Map_Dungeon_Boss_L.c"
+#include "Maps/Map_Dungeon_Boss_R.c"
+
+#include "Maps/Map_Dungeon_Item_T.c"
+#include "Maps/Map_Dungeon_Item_B.c"
+#include "Maps/Map_Dungeon_Item_L.c"
+#include "Maps/Map_Dungeon_Item_R.c"
+
 extern const UBYTE Tileset_1_Map[60][4];
 extern const UBYTE Tileset_1_Collision[60];
 
 void Draw_Tile20(UINT16 tile_x, UINT16 tile_y, UBYTE tile_num)
 {
+    if(tile_x > 31){tile_x -= 32;}
+    if(tile_y > 31){tile_y -= 32;}
+
     switch(Tileset)
     {
         case 1:
@@ -51,7 +66,13 @@ void Draw_Horizontal_Line20(const GameMap* map, UBYTE pos_x, UBYTE pos_y, UBYTE 
 {
     for(u_i = 0; u_i < 10; u_i++)
     {
-        Draw_Tile20(pos_x + u_i * 2, pos_y, map->data[tile_y * 10 + u_i]);
+        map_pos_x = pos_x + u_i * 2;;
+        map_pos_y = pos_y;
+
+        if(map_pos_x > 31){map_pos_x -= 32;}
+        if(map_pos_y > 31){map_pos_y -= 32;}
+
+        Draw_Tile20(map_pos_x, map_pos_y, map->data[tile_y * 10 + u_i]);
     }
 }
 
@@ -59,7 +80,13 @@ void Draw_Vertical_Line20(const GameMap* map, UBYTE pos_x, UBYTE pos_y, UBYTE ti
 {
     for(u_i = 0; u_i < 9; u_i++)
     {
-        Draw_Tile20(pos_x, pos_y + u_i * 2, map->data[tile_x + u_i * 10]);
+        map_pos_x = pos_x;
+        map_pos_y = pos_y + u_i * 2;
+
+        if(map_pos_x > 31){map_pos_x -= 32;}
+        if(map_pos_y > 31){map_pos_y -= 32;}
+
+        Draw_Tile20(map_pos_x, map_pos_y, map->data[tile_x + u_i * 10]);
     }
 }
 
@@ -82,60 +109,15 @@ UBYTE Get_Collision_Tile20(UBYTE pos_x, UBYTE pos_y)
     }
 }
 
-UBYTE Get_Collision20(UBYTE direction, UBYTE pos_x, UBYTE pos_y)
+UBYTE Get_Collision20(UBYTE x1, UBYTE y1, INT8 offset_x, INT8 offset_y, UBYTE type)
 {
-    map_x = pos_x;
-    map_y = pos_y;
+    map_x = x1;
+    map_y = y1;
 
-    if(map_x > MAX_SIZE_X || map_y > MAX_SIZE_Y)
+    if(Get_Collision_Tile20(map_x, map_y) != type && Get_Collision_Tile20(map_x + offset_x, map_y + offset_y) != type)
     {
-        return true;
-    }
-
-    if(direction == up)
-    {
-        if(map_x % 16 != 0 && Get_Collision_Tile20(map_x, map_y) != 1 && Get_Collision_Tile20(map_x + 16, map_y) != 1)
-        {
-            return true;
-        }
-        else if(map_x % 16 == 0 && Get_Collision_Tile20(map_x, map_y) != 1)
-        {
-            return true;
-        }
-    }
-    else if(direction == down)
-    {
-        if(map_x % 16 != 0 && Get_Collision_Tile20(map_x, map_y + 16 - 1) != 1 && Get_Collision_Tile20(map_x + 16, map_y + 16 - 1) != 1)
-        {
-            return true;
-        }
-        else if(map_x % 16 == 0 && Get_Collision_Tile20(map_x, map_y + 16 - 1) != 1)
-        {
-            return true;
-        }
-    }
-    else if(direction == left)
-    {
-        if(map_y % 16 != 0 && Get_Collision_Tile20(map_x, map_y) != 1 && Get_Collision_Tile20(map_x, map_y + 16) != 1)
-        {
-            return true;
-        }
-        else if(map_y % 16 == 0 && Get_Collision_Tile20(map_x, map_y) != 1)
-        {
-            return true;
-        }
-    }
-    else if(direction == right)
-    {
-        if(map_y % 16 != 0 && Get_Collision_Tile20(map_x + 16 - 1, map_y) != 1 && Get_Collision_Tile20(map_x + 16 - 1, map_y + 16) != 1)
-        {
-            return true;
-        }
-        else if(map_y % 16 == 0 && Get_Collision_Tile20(map_x + 16 - 1, map_y) != 1)
-        {
-            return true;
-        }
+        return false;
     }
 
-    return false;
+    return true;
 }

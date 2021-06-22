@@ -9,8 +9,8 @@
   Format               : Gameboy 4 color.
   Compression          : None.
   Counter              : None.
-  Tile size            : 16 x 16
-  Tiles                : 0 to 0
+  Tile size            : 8 x 8
+  Tiles                : 0 to 4
 
   Palette colors       : None.
   SGB Palette          : None.
@@ -28,7 +28,7 @@
 /* Bank of tiles. */
 #define Tiles_CollisionBank 0
 /* Start of tile array. */
-extern const unsigned char Tiles_CollisionBLK1[];
+extern const unsigned char Tiles_Collision[];
 
 #endif
 

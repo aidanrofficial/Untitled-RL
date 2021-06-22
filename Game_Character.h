@@ -1,22 +1,43 @@
-#include <gb/gb.h>
-#include "Game_Sprite.h"
-
 #ifndef CHARACTER
 #define CHARACTER
 
+#include <gb/gb.h>
+#include "Game_Object.h"
+#include "Game_Sprite.h"
+
 typedef struct GameCharacter
 {
-    unsigned char name[15];
     UBYTE active;
-    UBYTE pos_y;
-    UBYTE pos_x;
-    UBYTE sprite_index;
+    GameObject object;
     UBYTE facing;
-    INT8 velocity_x;
-    INT8 velocity_y;
-    const GameCharSprite* sprites;
+    INT8 health;
+    UBYTE max_health;
+    UBYTE damage_timer;
+    const GameAnimPackage* anims;
+    const GameAnimation* current_anim;
+    UBYTE anim_frame;
+    UBYTE anim_tick;
+    UBYTE overlap_anim;
+    UBYTE ai_tick;
+    void (*update)(struct GameCharacter*);
 
 } GameCharacter;
+
+typedef struct GameAdd
+{
+    UBYTE active;
+    GameObject object;
+    UBYTE facing;
+    INT8 health;
+    UBYTE max_health;
+    UBYTE damage_timer;
+    const GameAnimPackage* anims;
+    const GameAnimation* current_anim;
+    UBYTE anim_frame;
+    UBYTE anim_tick;
+    UBYTE overlap_anim;
+    UBYTE ai_tick;
+} GameAdd;
 
 extern GameCharacter char_player;
 

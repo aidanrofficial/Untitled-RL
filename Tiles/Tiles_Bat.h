@@ -10,7 +10,7 @@
   Compression          : None.
   Counter              : None.
   Tile size            : 8 x 8
-  Tiles                : 0 to 15
+  Tiles                : 0 to 19
 
   Palette colors       : None.
   SGB Palette          : None.
@@ -33,6 +33,8 @@ extern const unsigned char Tiles_BatBLK0[];
 extern const unsigned char Tiles_BatBLK1[];
 /* Start of tile array. */
 extern const unsigned char Tiles_BatBLK2[];
+/* Start of tile array. */
+extern const unsigned char Tiles_BatBLK3[];
 /* Start of tile array. */
 extern const unsigned char Tiles_BatBLK1[];
 

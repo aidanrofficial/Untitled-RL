@@ -6,6 +6,7 @@
 #include "Game_Map.h"
 #include "Game_Enemy.h"
 #include "Object_Pools.c"
+#include "Tiles/Font_Menu.c"
 #include "Tiles/Tileset_1.c"
 
 Point room_queue[20];
@@ -14,11 +15,6 @@ UBYTE temp_x = 0, temp_y = 0;
 
 const unsigned char temp_room[1] = {0x01};
 const unsigned char temp_char_1[1] = {0x02};
-
-inline void Set_Name(GameCharacter* character, const char* name)
-{
-    strncpy(character->name, name, 14);
-}
 
 GameCharacter* Find_Free_Enemy()
 {
@@ -51,14 +47,20 @@ void Load_Enemy(const GameEnemy* enemy, UBYTE pos_x, UBYTE pos_y)
     if(temp_char == NULL){return;}
 
     temp_char->active = true;
-    temp_char->pos_x = pos_x;
-    temp_char->pos_y = pos_y;
+    temp_char->object.pos_x = pos_x;
+    temp_char->object.pos_y = pos_y;
+    temp_char->object.floating = enemy->floating;
+    temp_char->health = enemy->health;
+    temp_char->max_health = enemy->health;
+    temp_char->ai_tick = 0;
+    temp_char->object.on_collision = enemy->enemy_col;
+    temp_char->update = enemy->enemy_ai;
 
-    set_char_sprite(temp_char, enemy->sprites);
-    Call_Load_Sprite(bank3, temp_char, enemy->sprites->char_down->sprites[0]);
+    set_anim_package(temp_char, enemy->anims);
+    Call_Load_Sprite(&temp_char->object, enemy->anims->char_down->sprites[0]);
 
-    build_char(temp_char);
-    move_char(temp_char, temp_char->pos_x, temp_char->pos_y);
+    build_object(&temp_char->object);
+    move_object(&temp_char->object, temp_char->object.pos_x, temp_char->object.pos_y);
 }
 
 void Load_Room_Enemies(const GameMap* map)
@@ -67,19 +69,31 @@ void Load_Room_Enemies(const GameMap* map)
     {
         if(map->troops[u_i].enemy == NULL){return;}
 
-        Load_Enemy(map->troops[u_i].enemy, map->troops[u_i].pos.pos_x, map->troops[u_i].pos.pos_y);
+        Load_Enemy(map->troops[u_i].enemy, map->troops[u_i].pos.x, map->troops[u_i].pos.y);
     }
 }
 
 void Clear_Enemy(GameCharacter* character)
 {
     character->active = false;
-    character->pos_x = 0;
-    character->pos_y = 0;
+    character->object.pos_x = 0;
+    character->object.pos_y = 0;
+    character->object.velocity_x = 0;
+    character->object.velocity_y = 0;
+    character->object.floating = false;
+    character->object.on_collision = NULL;
     character->facing = down;
-    character->sprites = NULL;
+    character->health = 0;
+    character->max_health = 0;
+    character->anim_frame = 0;
+    character->anim_tick = 0;
+    character->current_anim = NULL;
+    character->damage_timer = 0;
+    character->anims = NULL;
+    character->ai_tick = 0;
+    character->update = NULL;
     
-    Call_Load_Sprite(bank3, character, &sprite_clear);
+    Call_Load_Sprite(&character->object, &sprite_clear);
 }
 
 void Count_Doors(UBYTE room_pos_x, UBYTE room_pos_y)
@@ -194,11 +208,11 @@ void Load_Tileset(UBYTE tileset)
 
     if(Tileset == 1)
     {
-        set_bkg_data(0, 3, Tileset_1);
+        set_bkg_data(0, 110, Tileset_1);
     }
     else
     {
-        set_bkg_data(0, 3, Tileset_1);
+        set_bkg_data(0, 110, Tileset_1);
     }
 }
 
@@ -208,7 +222,7 @@ void Load_Map(const GameMap* map)
 
     Load_Tileset(map->tileset);
 
-    Call_Draw_Map(bank3, map);
+    Call_Draw_Map(map);
 }
 
 UBYTE Count_Neighbors(UBYTE pos_x, UBYTE pos_y)
@@ -242,11 +256,11 @@ UBYTE Count_Neighbors(UBYTE pos_x, UBYTE pos_y)
 
 void Generate_Floor()
 {
-    room_amount = 14 + rand() % 2;
+    room_amount = 3 + rand() % 2;
 
     while(true)
     {
-        for(u_i = 0; u_i < 11; u_i++)
+        for(u_i = 0; u_i < 11; u_i++) //* Reset 'floor_map'.
         {
             for(u_j = 0; u_j < 11; u_j++)
             {
@@ -254,25 +268,39 @@ void Generate_Floor()
             }
         }
 
-        for(u_i = 0; u_i < 20; u_i++)
+        for(u_i = 0; u_i < 11; u_i++) //* Reset 'room_open'.
         {
-            room_queue[u_i].pos_x = 0;
-            room_queue[u_i].pos_y = 0;
+            for(u_j = 0; u_j < 11; u_j++)
+            {
+                room_open[u_i][u_j] = false;
+            }
+        }
+
+        for(u_i = 0; u_i < 20; u_i++) //* Reset 'room_queue'.
+        {
+            room_queue[u_i].x = 0;
+            room_queue[u_i].y = 0;
+        }
+
+        for(u_i = 0; u_i < 15; u_i++) //* Reset 'end_rooms'.
+        {
+            end_rooms[u_i].x = 0;
+            end_rooms[u_i].y = 0;
         }
 
         floor_map[5][5] = &map_dungeon_1;
-        room_queue[0].pos_x = 5;
-        room_queue[0].pos_y = 5;
+        room_queue[0].x = 5;
+        room_queue[0].y = 5;
 
         queue_pos = 0;
         room_count = 1;
 
-        for(queue_amount = 0; queue_amount < 20; queue_amount++)
+        for(queue_amount = 0; queue_amount < 20; queue_amount++) //* Iterate through queued rooms.
         {
-            load_pos_x = room_queue[queue_amount].pos_x;
-            load_pos_y = room_queue[queue_amount].pos_y;
+            load_pos_x = room_queue[queue_amount].x;
+            load_pos_y = room_queue[queue_amount].y;
 
-            for(u_i = 0; u_i < 4; u_i++)
+            for(u_i = 0; u_i < 4; u_i++) //* Generate rooms randomly north, south, east, and west of queued room.
             {
                 x = 0;
                 y = 0;
@@ -293,11 +321,14 @@ void Generate_Floor()
                     if(floor_map[map_y][map_x] == NULL && Count_Neighbors(map_x, map_y) < 2 && room_count < room_amount && rand() % 10 < 5)
                     {
                         floor_map[map_y][map_x] = &map_dungeon_1;
-                        room_queue[queue_pos].pos_x = map_x;
-                        room_queue[queue_pos].pos_y = map_y;
+                        room_queue[queue_pos].x = map_x;
+                        room_queue[queue_pos].y = map_y;
 
                         queue_pos++;
                         room_count++;
+
+                        last_room.x = map_x;
+                        last_room.y = map_y;
                     }
                 }
 
@@ -330,19 +361,59 @@ void Generate_Floor()
         }
     }
 
-    for(u_i = 0; u_i < 11; u_i++)
+    ctr_end_room = 0;
+
+    for(u_y = 0; u_y < 11; u_y++) //* Add all end rooms to 'end_rooms'
     {
-        for(u_j = 0; u_j < 11; u_j++)
+        for(u_x = 0; u_x < 11; u_x++)
         {
-            if(u_j == room_x && u_i == room_y)
+            if(floor_map[u_y][u_x] != NULL)
             {
-                set_win_tiles(u_j, u_i, 1, 1, temp_char_1);
-            }
-            else if(floor_map[u_i][u_j] != NULL)
-            {
-                set_win_tiles(u_j, u_i, 1, 1, temp_room);
+                if(Count_Neighbors(u_x, u_y) == 1 && floor_map[u_y][u_x]->type != room_boss)
+                {
+                    end_rooms[ctr_end_room].x = u_x;
+                    end_rooms[ctr_end_room].y = u_y;
+
+                    ctr_end_room++;
+                }
             }
         }
+    }
+
+    u_i = rand() % ctr_end_room;
+
+    if(floor_map[end_rooms[u_i].y][end_rooms[u_i].x]->doors[up] == true)
+    {
+        floor_map[end_rooms[u_i].y][end_rooms[u_i].x] = &map_dungeon_item_t;
+    }
+    else if(floor_map[end_rooms[u_i].y][end_rooms[u_i].x]->doors[down] == true)
+    {
+        floor_map[end_rooms[u_i].y][end_rooms[u_i].x] = &map_dungeon_item_b;
+    }
+    else if(floor_map[end_rooms[u_i].y][end_rooms[u_i].x]->doors[left] == true)
+    {
+        floor_map[end_rooms[u_i].y][end_rooms[u_i].x] = &map_dungeon_item_l;
+    }
+    else if(floor_map[end_rooms[u_i].y][end_rooms[u_i].x]->doors[right] == true)
+    {
+        floor_map[end_rooms[u_i].y][end_rooms[u_i].x] = &map_dungeon_item_r;
+    }
+
+    if(floor_map[last_room.y][last_room.x]->doors[up] == true)
+    {
+        floor_map[last_room.y][last_room.x] = &map_dungeon_boss_t;
+    }
+    else if(floor_map[last_room.y][last_room.x]->doors[down] == true)
+    {
+        floor_map[last_room.y][last_room.x] = &map_dungeon_boss_b;
+    }
+    else if(floor_map[last_room.y][last_room.x]->doors[left] == true)
+    {
+        floor_map[last_room.y][last_room.x] = &map_dungeon_boss_l;
+    }
+    else if(floor_map[last_room.y][last_room.x]->doors[right] == true)
+    {
+        floor_map[last_room.y][last_room.x] = &map_dungeon_boss_r;
     }
 }
 
@@ -356,15 +427,14 @@ void Load_Floor()
     Clear_Enemy(&char_enemy_4);
 
     move_bkg(0, 0);
-    fill_win_rect(0, 0, 11, 11, 0x00);
 
     Clear_Background();
 
     Generate_Floor();
 
-    Call_Load_Map(bank3, floor_map[5][5]);
+    Call_Load_Map(floor_map[5][5]);
 
-    move_char(&char_player, 80, 64);
+    move_object(&char_player.object, 80, 64);
 
     fade_in();
 }
